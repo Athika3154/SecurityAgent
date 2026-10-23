@@ -1,0 +1,9 @@
+# Scanner policy. In CI this file is read from the base branch, never from a PR.
+fail_on: high            # low | medium | high | critical
+timeout: 600             # seconds, applied to every subprocess
+allowed_hosts:           # hosts a repo URL may be cloned from
+  - github.com
+allowlist:               # findings matching any entry are suppressed
+  fingerprints: []
+  rules: []
+  paths: []              # glob patterns, e.g. "tests/fixtures/*"
