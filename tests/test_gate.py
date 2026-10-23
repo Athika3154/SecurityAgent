@@ -6,7 +6,7 @@ from scanner.normalizer import SEVERITIES, make_finding
 
 
 def _finding(rule="aws-access-token", file="src/app.py", severity="high"):
-    return make_finding(tool="gitleaks", rule=rule, file=file, line=1,
+    return make_finding(tool="gitleaks", rule=rule, category="secret", title=rule, file=file, line=1,
                         severity=severity, commit="abcdef123456")
 
 

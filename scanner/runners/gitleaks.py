@@ -13,7 +13,7 @@ _LEAKS_EXIT = 3
 _RULES_ONLY_CONFIG = "[extend]\nuseDefault = true\n"
 _CRITICAL_RULES = frozenset({"private-key", "aws-access-token"})
 # Only these report fields are ever read; Secret, Match and Line are never touched.
-_FIELDS = ("RuleID", "File", "StartLine", "Commit")
+_FIELDS = ("RuleID", "Description", "File", "StartLine", "Commit")
 
 
 def _severity(rule: object) -> str:
@@ -27,10 +27,13 @@ def _to_finding(raw: object) -> Finding:
     return make_finding(
         tool="gitleaks",
         rule=safe["RuleID"],
+        category="secret",
+        title=safe["Description"] or safe["RuleID"],
         file=safe["File"],
         line=safe["StartLine"],
         severity=_severity(safe["RuleID"]),
         commit=safe["Commit"],
+        pin_commit=True,
     )
 
 
@@ -47,6 +50,7 @@ def _read_report(report: Path) -> list[Finding]:
 
 class GitleaksRunner:
     name = "gitleaks"
+    history = True
 
     def run(self, repo: Path, timeout: int, commit_range: str | None = None) -> list[Finding]:
         binary = os.environ.get("SCAN_GITLEAKS_BIN", "gitleaks")

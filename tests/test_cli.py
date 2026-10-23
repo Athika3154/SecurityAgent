@@ -13,7 +13,7 @@ from tests.conftest import FAKE_SECRETS, requires_gitleaks
 def _scan(repo, tmp_path, *extra):
     out = tmp_path / "out"
     out.mkdir(exist_ok=True)
-    code = main([str(repo), "--output", str(out / "report.json"), *extra])
+    code = main([str(repo), "--runners", "gitleaks", "--output", str(out / "report.json"), *extra])
     return code, out / "report.json"
 
 
@@ -24,11 +24,11 @@ def test_deleted_secret_is_still_found_from_history(fake_repo, tmp_path):
     by_file = {finding["file"]: finding for finding in findings}
     assert code == EXIT_FINDINGS
     assert "settings.py" in by_file and not (fake_repo / "settings.py").exists()
-    assert by_file["settings.py"]["secret_type"] == "aws-access-token"
+    assert by_file["settings.py"]["rule"] == "aws-access-token"
     assert "notes.md" in by_file
     for finding in findings:
-        assert set(finding) == {"file", "line", "secret_type", "severity", "tool",
-                                "commit", "fingerprint", "remediation"}
+        assert set(finding) == {"file", "line", "rule", "category", "title", "severity",
+                                "tool", "commit", "fingerprint", "remediation"}
         assert "rotate" in finding["remediation"].lower()
 
 

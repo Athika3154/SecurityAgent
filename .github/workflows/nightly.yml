@@ -1,0 +1,65 @@
+name: Nightly full-history scan
+
+# Runs on the default branch only (schedules always do), so the scanner, scan.yaml
+# and the baseline it uses are trusted code. A failure (new findings at or above
+# fail_on, or a broken scanner) shows as a failed run, which GitHub can notify on.
+on:
+  schedule:
+    - cron: "17 2 * * *"   # 02:17 UTC every day
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write   # upload SARIF to code scanning
+
+concurrency:
+  group: nightly-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out the repo (full history)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install scanners (pinned versions live in this action)
+        uses: ./.github/actions/install-scanners
+
+      - name: Scan the whole history
+        id: scan
+        env:
+          SCAN_FP_SALT: ${{ secrets.SCAN_FP_SALT }}
+        run: |
+          mkdir scan-out
+          args=()
+          if [ -s .scan-baseline.json ]; then
+            args+=(--baseline .scan-baseline.json)
+          fi
+          python -m scanner.cli . \
+            --config scan.yaml \
+            --output scan-out/scan-report.json \
+            --sarif scan-out/scan.sarif \
+            --html scan-out/scan-report.html \
+            "${args[@]}"
+
+      - name: Upload SARIF to code scanning
+        if: always() && hashFiles('scan-out/scan.sarif') != ''
+        uses: github/codeql-action/upload-sarif@ff0a06e83cb2de871e5a09832bc6a81e7276941f  # v3.28.18
+        with:
+          sarif_file: scan-out/scan.sarif
+          category: secret-scanner-nightly
+
+      - name: Upload HTML report
+        if: always() && hashFiles('scan-out/scan-report.html') != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: nightly-scan-report
+          path: |
+            scan-out/scan-report.html
+            scan-out/scan-report.json
+          retention-days: 30

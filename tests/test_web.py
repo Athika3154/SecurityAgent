@@ -57,7 +57,8 @@ def test_cross_site_post_is_rejected(server, monkeypatch):
 
 
 def test_scan_shows_the_report(server, monkeypatch):
-    finding = make_finding(tool="gitleaks", rule="private-key", file="deploy_key.pem", line=1,
+    finding = make_finding(tool="gitleaks", rule="private-key", category="secret", title="Private key",
+                           file="deploy_key.pem", line=1,
                            severity="critical", commit="abcdef123456")
     seen = []
     monkeypatch.setattr("scanner.web.run_scan", lambda url, cfg: (seen.append(url) or ([finding], 1)))

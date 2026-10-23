@@ -57,16 +57,18 @@ button{padding:.5rem 1.2rem;font:inherit;font-weight:600;border:0;border-radius:
 <div class="card"><b>{{ count }}</b>{{ level }}</div>
 {% endfor %}
 <div class="card"><b>{{ report.summary.suppressed }}</b>suppressed</div>
+<div class="card"><b>{{ report.summary.baselined }}</b>in baseline</div>
 </div>
 {% if report.findings %}
 <table>
-<thead><tr><th>Severity</th><th>Location</th><th>Type</th><th>Tool</th><th>Commit</th><th>Fingerprint</th><th>What to do</th></tr></thead>
+<thead><tr><th>Severity</th><th>Category</th><th>Location</th><th>Issue</th><th>Tool</th><th>Commit</th><th>Fingerprint</th><th>What to do</th></tr></thead>
 <tbody>
 {% for f in report.findings %}
 <tr>
 <td><span class="sev sev-{{ f.severity }}">{{ f.severity }}</span></td>
-<td><code>{{ f.file }}:{{ f.line }}</code></td>
-<td>{{ f.secret_type }}</td>
+<td>{{ f.category }}</td>
+<td><code>{{ f.file }}{% if f.line %}:{{ f.line }}{% endif %}</code></td>
+<td>{{ f.title }}<br><code>{{ f.rule }}</code></td>
 <td>{{ f.tool }}</td>
 <td><code>{{ f.commit }}</code></td>
 <td><code>{{ f.fingerprint }}</code></td>
@@ -86,7 +88,9 @@ button{padding:.5rem 1.2rem;font:inherit;font-weight:600;border:0;border-radius:
 _HTML = Environment(autoescape=True).from_string(_HTML_TEMPLATE)
 
 
-def build_report(source: str, findings: list[Finding], suppressed: int) -> dict[str, object]:
+def build_report(
+    source: str, findings: list[Finding], suppressed: int, baselined: int = 0
+) -> dict[str, object]:
     counts = Counter(finding.severity for finding in findings)
     return {
         "source": source,
@@ -94,6 +98,7 @@ def build_report(source: str, findings: list[Finding], suppressed: int) -> dict[
         "summary": {
             "total": len(findings),
             "suppressed": suppressed,
+            "baselined": baselined,
             "by_severity": {level: counts.get(level, 0) for level in SEVERITIES},
         },
         "findings": [finding.to_dict() for finding in findings],
@@ -106,12 +111,12 @@ def build_sarif(findings: list[Finding]) -> dict[str, object]:
     rules: list[dict[str, object]] = []
     results: list[dict[str, object]] = []
     for finding in findings:
-        rule_id = f"{finding.tool}/{finding.secret_type}"
+        rule_id = f"{finding.category}/{finding.rule}"
         if rule_id not in rule_ids:
             rule_ids.append(rule_id)
             rules.append({
                 "id": rule_id,
-                "shortDescription": {"text": finding.secret_type},
+                "shortDescription": {"text": finding.title},
                 "help": {"text": finding.remediation},
                 "defaultConfiguration": {"level": _SARIF_LEVEL[finding.severity]},
                 "properties": {"security-severity": _SECURITY_SEVERITY[finding.severity]},
@@ -120,7 +125,7 @@ def build_sarif(findings: list[Finding]) -> dict[str, object]:
             "ruleId": rule_id,
             "ruleIndex": rule_ids.index(rule_id),
             "level": _SARIF_LEVEL[finding.severity],
-            "message": {"text": f"{finding.secret_type} detected (commit {finding.commit}). "
+            "message": {"text": f"{finding.title} (commit {finding.commit}). "
                                 f"{finding.remediation}"},
             "locations": [{"physicalLocation": {
                 "artifactLocation": {"uri": finding.file},
@@ -128,7 +133,7 @@ def build_sarif(findings: list[Finding]) -> dict[str, object]:
             }}],
             "partialFingerprints": {"scannerFingerprint/v1": finding.fingerprint},
             "properties": {"tool": finding.tool, "commit": finding.commit,
-                           "severity": finding.severity},
+                           "severity": finding.severity, "category": finding.category},
         })
     return {
         "$schema": SARIF_SCHEMA,

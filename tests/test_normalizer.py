@@ -7,14 +7,15 @@ COMMIT = "0123456789abcdef0123456789abcdef01234567"
 
 
 def _make(**overrides):
-    args = dict(tool="gitleaks", rule="aws-access-token", file="a/b.py", line=3,
+    args = dict(tool="gitleaks", rule="aws-access-token", category="secret", title="AWS key",
+                file="a/b.py", line=3,
                 severity="high", commit=COMMIT)
     return make_finding(**{**args, **overrides})
 
 
 def test_finding_has_required_fields_and_rotation_advice():
     finding = _make()
-    assert (finding.file, finding.line, finding.secret_type) == ("a/b.py", 3, "aws-access-token")
+    assert (finding.file, finding.line, finding.rule) == ("a/b.py", 3, "aws-access-token")
     assert finding.severity == "high" and finding.tool == "gitleaks"
     assert finding.commit == COMMIT[:8]
     assert finding.remediation == REMEDIATION and "rotate" in finding.remediation.lower()

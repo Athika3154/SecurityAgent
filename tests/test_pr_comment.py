@@ -15,7 +15,7 @@ API = "https://api.github.com"
 
 
 def _finding(**overrides):
-    base = {"file": "src/app.py", "line": 7, "secret_type": "private-key", "severity": "critical",
+    base = {"file": "src/app.py", "line": 7, "rule": "private-key", "category": "secret", "title": "Private key", "severity": "critical",
             "tool": "gitleaks", "commit": "abcdef12", "fingerprint": "f" * 32, "remediation": "rotate"}
     return {**base, **overrides}
 
@@ -139,7 +139,7 @@ def test_comment_with_no_findings():
 
 
 def test_comment_escapes_hostile_values():
-    hostile = _finding(file="a|b`c\n@everyone <script>alert(1)</script>.py", secret_type="x|y")
+    hostile = _finding(file="a|b`c\n@everyone <script>alert(1)</script>.py", rule="x|y")
     body = build_comment(_report([hostile]))
     row = [line for line in body.splitlines() if "everyone" in line]
     assert len(row) == 1  # newline in the name cannot start a new line

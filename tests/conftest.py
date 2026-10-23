@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import subprocess
@@ -40,3 +41,24 @@ def fake_repo(tmp_path_factory: pytest.TempPathFactory) -> Path:
     _git(repo, "add", "-A")
     _git(repo, "commit", "-q", "-m", "add notes")
     return repo
+
+
+def fake_tool(payload, exit_code=0, calls=None):
+    """Stand-in for runners.run_quiet: writes payload to the --output/--report-path file."""
+
+    def run(cmd, timeout, label, env=None, cwd=None):
+        if calls is not None:
+            calls.append({"cmd": list(cmd), "env": env, "cwd": cwd})
+        for flag in ("--output", "--report-path"):
+            if flag in cmd and payload is not None:
+                Path(cmd[cmd.index(flag) + 1]).write_text(json.dumps(payload), encoding="utf-8")
+        return exit_code
+
+    return run
+
+
+def repo_shas(repo: Path) -> list[str]:
+    """Commit SHAs oldest first."""
+    out = subprocess.run(["git", "rev-list", "--reverse", "HEAD"], cwd=repo, check=True,
+                         capture_output=True, text=True).stdout
+    return out.split()

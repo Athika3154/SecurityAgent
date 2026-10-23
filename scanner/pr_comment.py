@@ -58,24 +58,30 @@ def build_comment(report: dict[str, object]) -> str:
         lines += [
             f"**{len(findings)} finding(s)** in the commits of this pull request.",
             "",
-            "| Severity | Location | Type | Commit | Tool |",
-            "|---|---|---|---|---|",
+            "| Severity | Category | Location | Rule | Commit | Tool |",
+            "|---|---|---|---|---|---|",
         ]
         for finding in findings[:MAX_ROWS]:
             if not isinstance(finding, dict):
                 raise CommentError("report has an unexpected structure")
-            location = f"{finding.get('file', '')}:{finding.get('line', '')}"
+            line = finding.get("line")
+            location = f"{finding.get('file', '')}:{line}" if line else finding.get("file", "")
             lines.append(
-                f"| {_cell(finding.get('severity', ''))} | {_cell(location)} "
-                f"| {_cell(finding.get('secret_type', ''))} | {_cell(finding.get('commit', ''))} "
-                f"| {_cell(finding.get('tool', ''))} |"
+                f"| {_cell(finding.get('severity', ''))} | {_cell(finding.get('category', ''))} "
+                f"| {_cell(location)} | {_cell(finding.get('rule', ''))} "
+                f"| {_cell(finding.get('commit', ''))} | {_cell(finding.get('tool', ''))} |"
             )
         if len(findings) > MAX_ROWS:
             lines.append(f"\n...and {len(findings) - MAX_ROWS} more. See the full report artifact.")
-        lines += ["", _ROTATE_NOTICE]
-    suppressed = summary.get("suppressed", 0)
-    if isinstance(suppressed, int) and suppressed:
-        lines.append(f"\n{suppressed} finding(s) suppressed by the allowlist.")
+        if any(isinstance(f, dict) and f.get("category") == "secret" for f in findings):
+            lines += ["", _ROTATE_NOTICE]
+    for key, label in (
+        ("suppressed", "suppressed by the allowlist"),
+        ("baselined", "already in the baseline"),
+    ):
+        count = summary.get(key, 0)
+        if isinstance(count, int) and count:
+            lines.append(f"\n{count} finding(s) {label}.")
     return "\n".join(lines)
 
 

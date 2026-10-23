@@ -18,7 +18,8 @@ def _shas(repo):
 
 def _scan(repo, tmp_path, commit_range):
     report = tmp_path / "report.json"
-    code = main([str(repo), f"--commit-range={commit_range}", "--output", str(report)])
+    code = main([str(repo), "--runners", "gitleaks", f"--commit-range={commit_range}",
+                "--output", str(report)])
     return code, report
 
 

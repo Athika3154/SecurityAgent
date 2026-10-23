@@ -12,7 +12,7 @@ EXIT_FINDINGS = 2
 def _is_allowed(finding: Finding, allowlist: Allowlist) -> bool:
     return (
         finding.fingerprint in allowlist.fingerprints
-        or finding.secret_type in allowlist.rules
+        or finding.rule in allowlist.rules
         or any(fnmatchcase(finding.file, pattern) for pattern in allowlist.paths)
     )
 
